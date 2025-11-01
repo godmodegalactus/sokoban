@@ -195,7 +195,7 @@ impl<
     fn assert_proper_alignemnt(&self) {
         let reg_size = size_of::<u32>() * NUM_REGISTERS;
         let self_ptr = std::slice::from_ref(self).as_ptr() as usize;
-        let node_ptr = std::slice::from_ref(&self.nodes).as_ptr() as usize;
+        let node_ptr = std::slice::from_ref(&*self.nodes).as_ptr() as usize;
         let self_align = align_of::<Self>();
         let t_index = node_ptr + reg_size;
         let t_align = align_of::<T>();
@@ -218,7 +218,6 @@ impl<
             t_size,
             self_align,
         );
-        assert!(node_ptr == self_ptr + 16, "Nodes are misaligned");
         assert!(t_index % t_align == 0, "First index of T is misaligned");
         assert!(
             (t_index + t_size + reg_size) % t_align == 0,
