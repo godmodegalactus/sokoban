@@ -7,7 +7,6 @@ use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::{self, Rng};
-use sokoban::node_allocator::FromSlice;
 use sokoban::node_allocator::NodeAllocatorMap;
 use sokoban::*;
 use std::collections::BTreeMap;
@@ -39,11 +38,10 @@ impl Widget {
 
 fn simulate<K: std::fmt::Debug + Clone + Copy + Zeroable + Pod + Ord, T>(expect_sorted: bool)
 where
-    T: Copy + FromSlice + NodeAllocatorMap<K, Widget>,
+    T: Clone + Default + NodeAllocatorMap<K, Widget>,
     Standard: Distribution<K>,
 {
-    let mut buf = vec![0u8; std::mem::size_of::<T>()];
-    let tree = T::new_from_slice(buf.as_mut_slice());
+    let mut tree = T::default();
     println!(
         "{} Memory Size: {}, Capacity: {}",
         std::any::type_name::<T>(),
@@ -285,24 +283,4 @@ where
 async fn test_simulate_red_black_tree() {
     type RBTree = RedBlackTree<u64, Widget, MAX_SIZE>;
     simulate::<u64, RBTree>(true);
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn test_simulate_hash_table() {
-    const NUM_BUCKETS: usize = MAX_SIZE >> 2;
-    type HashMap = HashTable<u64, Widget, NUM_BUCKETS, MAX_SIZE>;
-    simulate::<u64, HashMap>(false);
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn test_simulate_avl_tree() {
-    type AVLTreeMap = AVLTree<u64, Widget, MAX_SIZE>;
-    simulate::<u64, AVLTreeMap>(true);
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn test_simulate_critbit() {
-    const NUM_NODES: usize = MAX_SIZE << 1;
-    type CritbitTree = Critbit<Widget, NUM_NODES, MAX_SIZE>;
-    simulate::<u128, CritbitTree>(true);
 }

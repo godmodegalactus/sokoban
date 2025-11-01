@@ -8,6 +8,7 @@ use std::mem::{align_of, size_of};
 /// 2 - parent pointer
 /// 3 - value pointer (index of leaf)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive)]
+#[repr(u8)]
 pub enum TreeField {
     Left = 0,
     Right = 1,
@@ -19,6 +20,7 @@ pub enum TreeField {
 /// 0 - left pointer
 /// 1 - right pointer
 #[derive(Debug, Copy, Clone, PartialEq, Eq, FromPrimitive)]
+#[repr(u8)]
 pub enum NodeField {
     Left = 0,
     Right = 1,
@@ -50,10 +52,10 @@ pub trait NodeAllocatorMap<K, V> {
 
 /// This trait adds additional functions for sorted map data structures that use the NodeAllocator
 pub trait OrderedNodeAllocatorMap<K, V>: NodeAllocatorMap<K, V> {
-    fn get_min_index(&mut self) -> u32;
-    fn get_max_index(&mut self) -> u32;
-    fn get_min(&mut self) -> Option<(K, V)>;
-    fn get_max(&mut self) -> Option<(K, V)>;
+    fn get_min_index(&self) -> u32;
+    fn get_max_index(&self) -> u32;
+    fn get_min(&self) -> Option<(K, V)>;
+    fn get_max(&self) -> Option<(K, V)>;
 }
 
 pub trait ZeroCopy: Pod {
@@ -131,7 +133,7 @@ impl<T: Copy + Clone + Pod + Zeroable + Default, const NUM_REGISTERS: usize>
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct NodeAllocator<
     T: Default + Copy + Clone + Pod + Zeroable,
     const MAX_SIZE: usize,
@@ -149,7 +151,7 @@ pub struct NodeAllocator<
     /// the new index to allocated is pulled from the `free_list_head`
     free_list_head: u32,
     /// Nodes containing data, with `NUM_REGISTERS` registers that store arbitrary data  
-    pub nodes: [Node<T, NUM_REGISTERS>; MAX_SIZE],
+    pub nodes: Box<[Node<T, NUM_REGISTERS>; MAX_SIZE]>,
 }
 
 unsafe impl<
@@ -157,21 +159,6 @@ unsafe impl<
         const MAX_SIZE: usize,
         const NUM_REGISTERS: usize,
     > Zeroable for NodeAllocator<T, MAX_SIZE, NUM_REGISTERS>
-{
-}
-unsafe impl<
-        T: Default + Copy + Clone + Pod + Zeroable,
-        const MAX_SIZE: usize,
-        const NUM_REGISTERS: usize,
-    > Pod for NodeAllocator<T, MAX_SIZE, NUM_REGISTERS>
-{
-}
-
-impl<
-        T: Default + Copy + Clone + Pod + Zeroable,
-        const MAX_SIZE: usize,
-        const NUM_REGISTERS: usize,
-    > ZeroCopy for NodeAllocator<T, MAX_SIZE, NUM_REGISTERS>
 {
 }
 
@@ -187,7 +174,7 @@ impl<
             size: 0,
             bump_index: 1,
             free_list_head: 1,
-            nodes: [Node::<T, NUM_REGISTERS>::default(); MAX_SIZE],
+            nodes: Box::new([Node::<T, NUM_REGISTERS>::default(); MAX_SIZE]),
         };
         na.assert_proper_alignemnt();
         na
