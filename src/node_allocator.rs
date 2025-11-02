@@ -151,7 +151,8 @@ pub struct NodeAllocator<
     /// the new index to allocated is pulled from the `free_list_head`
     free_list_head: u32,
     /// Nodes containing data, with `NUM_REGISTERS` registers that store arbitrary data  
-    pub nodes: Box<[Node<T, NUM_REGISTERS>; MAX_SIZE]>,
+    pub nodes: Vec<Node<T, NUM_REGISTERS>>,
+    pub size_of_nodes: usize,
 }
 
 unsafe impl<
@@ -169,12 +170,14 @@ impl<
     > Default for NodeAllocator<T, MAX_SIZE, NUM_REGISTERS>
 {
     fn default() -> Self {
+        let nodes = vec![Node::<T, NUM_REGISTERS>::default(); MAX_SIZE];
         assert!(NUM_REGISTERS >= 1);
         let na = NodeAllocator {
             size: 0,
             bump_index: 1,
             free_list_head: 1,
-            nodes: Box::new([Node::<T, NUM_REGISTERS>::default(); MAX_SIZE]),
+            nodes,
+            size_of_nodes: MAX_SIZE,
         };
         na.assert_proper_alignemnt();
         na
@@ -195,7 +198,7 @@ impl<
     fn assert_proper_alignemnt(&self) {
         let reg_size = size_of::<u32>() * NUM_REGISTERS;
         let self_ptr = std::slice::from_ref(self).as_ptr() as usize;
-        let node_ptr = std::slice::from_ref(&*self.nodes).as_ptr() as usize;
+        let node_ptr = std::slice::from_ref(&self.nodes).as_ptr() as usize;
         let self_align = align_of::<Self>();
         let t_index = node_ptr + reg_size;
         let t_align = align_of::<T>();
